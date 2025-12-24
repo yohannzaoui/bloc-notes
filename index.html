@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bloc-Notes Sécurisé Pro</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
+    <link href="https://bootswatch.com/5/flatly/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; }
+        #lockScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #2c3e50; z-index: 9999; display: flex;
+            align-items: center; justify-content: center; color: white;
+        }
+        .note-card { border: none; border-left: 6px solid #2c3e50; transition: all 0.3s ease; }
+        .note-text { font-size: 1.1rem; line-height: 1.6; outline: none; padding: 10px; border-radius: 5px; }
+        .hidden { display: none !important; }
+        .settings-panel { display: none; margin-top: 15px; }
+        .search-container { position: relative; }
+        .search-container input { padding-left: 35px; border-radius: 20px; }
+        .search-icon { position: absolute; left: 12px; top: 8px; color: #95a5a6; }
+    </style>
+</head>
+<body>
+
+<div id="lockScreen">
+    <div class="text-center p-4 bg-white rounded shadow text-dark" style="width: 350px;">
+        <h3 id="lockTitle">Accès Sécurisé</h3>
+        <p id="lockDesc" class="small text-muted">Veuillez vous authentifier.</p>
+        <input type="password" id="passwordInput" class="form-control mb-3 text-center" placeholder="Mot de passe">
+        <button id="lockBtn" class="btn btn-primary w-100" onclick="checkPassword()">Déverrouiller</button>
+    </div>
+</div>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-md-10">
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="fw-bold text-primary m-0">Mes Notes 🔒</h1>
+                <div>
+                    <button class="btn btn-sm btn-outline-info me-2" onclick="toggleSettings()">⚙️ Sécurité</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="lockApp()">Verrouiller</button>
+                </div>
+            </div>
+
+            <div class="search-container mb-4">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" class="form-control" placeholder="Rechercher dans vos notes..." onkeyup="filterNotes()">
+            </div>
+
+            <div id="settingsPanel" class="card shadow-sm border-0 mb-4 settings-panel">
+                <div class="card-body bg-light rounded">
+                    <h6 class="card-title fw-bold text-danger">Paramètres de sécurité</h6>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="small fw-bold">Changer le mot de passe :</label>
+                        <div class="row g-2">
+                            <div class="col-md-5"><input type="password" id="oldPass" class="form-control form-control-sm" placeholder="Ancien MDP"></div>
+                            <div class="col-md-5"><input type="password" id="newPass" class="form-control form-control-sm" placeholder="Nouveau MDP"></div>
+                            <div class="col-md-2"><button class="btn btn-sm btn-success w-100" onclick="updatePassword()">OK</button></div>
+                        </div>
+                    </div>
+                    <div class="border-top pt-3">
+                        <label class="small fw-bold text-danger d-block mb-2">Zone de danger :</label>
+                        <button class="btn btn-sm btn-danger text-white" onclick="resetApp()">🗑️ Réinitialiser l'application</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm border-0 mb-5">
+                <div class="card-body p-4">
+                    <textarea id="noteInput" class="form-control mb-3" rows="4" placeholder="Écrire une note..."></textarea>
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-light border btn-sm" onclick="exportToCSV()">📤 Exporter CSV</button>
+                        <button class="btn btn-primary px-4 shadow-sm" onclick="addNote()">✚ Ajouter</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="notesContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
