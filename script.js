@@ -1,35 +1,50 @@
+// --- CONFIGURATION FIREBASE ---
+// Remplacez ces valeurs par celles de votre projet Firebase
+const firebaseConfig = {
+    apiKey: "VOTRE_API_KEY",
+    authDomain: "VOTRE_PROJET.firebaseapp.com",
+    databaseURL: "https://VOTRE_PROJET.firebaseio.com",
+    projectId: "VOTRE_PROJET",
+    storageBucket: "VOTRE_PROJET.appspot.com",
+    messagingSenderId: "VOTRE_ID",
+    appId: "VOTRE_APP_ID"
+};
+
+// Initialisation de Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
 // --- TRADUCTIONS ---
 const translations = {
     fr: {
-        title: "Notes Sécurisées 🔒",
+        title: "Notes Cloud 🔒",
         settings: "⚙️ Sécurité",
         lock: "Verrouiller",
-        search: "Rechercher dans vos notes...",
+        search: "Rechercher...",
         placeholder: "Écrire une note confidentielle...",
-        add: "✚ Ajouter Note",
-        export: "📤 Exporter CSV",
-        secTitle: "Paramètres de sécurité",
+        add: "✚ Ajouter",
+        export: "📤 Export CSV",
+        secTitle: "Sécurité",
         oldP: "Ancien MDP",
         newP: "Nouveau MDP",
-        reset: "🗑️ Réinitialiser tout",
+        reset: "🗑️ Tout effacer",
         createdOn: "Créée le :",
         authTitle: "Accès Sécurisé",
         authDesc: "Entrez votre mot de passe maître.",
         setPass: "Définir le mot de passe",
         confirmDelete: "Supprimer cette note ?",
         confirmReset: "Voulez-vous vraiment TOUT supprimer ?",
-        errorPass: "Mot de passe incorrect.",
-        successPass: "Mot de passe modifié !"
+        errorPass: "Mot de passe incorrect."
     },
     en: {
-        title: "Secure Notes 🔒",
+        title: "Cloud Notes 🔒",
         settings: "⚙️ Security",
         lock: "Lock",
-        search: "Search notes...",
+        search: "Search...",
         placeholder: "Type a secret note...",
         add: "✚ Add Note",
         export: "📤 Export CSV",
-        secTitle: "Security Settings",
+        secTitle: "Security",
         oldP: "Old Password",
         newP: "New Password",
         reset: "🗑️ Full Reset",
@@ -39,8 +54,7 @@ const translations = {
         setPass: "Set Master Password",
         confirmDelete: "Delete this note?",
         confirmReset: "Are you sure you want to delete EVERYTHING?",
-        errorPass: "Incorrect password.",
-        successPass: "Password updated!"
+        errorPass: "Incorrect password."
     }
 };
 
@@ -82,20 +96,20 @@ async function updatePassword() {
     const stored = localStorage.getItem('app_password_hash');
     if (await hashPassword(oldP.value) === stored) {
         localStorage.setItem('app_password_hash', await hashPassword(newP.value));
-        alert(translations[currentLang].successPass);
+        alert("Succès !");
         oldP.value = ""; newP.value = ""; toggleSettings();
     } else { alert(translations[currentLang].errorPass); }
 }
 
 async function resetApp() {
     const p = prompt(translations[currentLang].authDesc);
-    if (!p) return;
     if (await hashPassword(p) === localStorage.getItem('app_password_hash')) {
         if (confirm(translations[currentLang].confirmReset)) {
+            database.ref('notes/').remove();
             localStorage.clear();
             location.reload();
         }
-    } else { alert(translations[currentLang].errorPass); }
+    }
 }
 
 // --- INTERFACE ---
@@ -129,74 +143,55 @@ function toggleSettings() {
     p.style.display = (p.style.display === 'block') ? 'none' : 'block';
 }
 
-// --- GESTION DES NOTES ---
+// --- GESTION DES NOTES AVEC FIREBASE ---
 function addNote() {
     const input = document.getElementById('noteInput');
     if (!input.value.trim()) return;
-    
-    const notes = JSON.parse(localStorage.getItem('local_notes') || '[]');
-    const dateOptions = currentLang === 'fr' ? 'fr-FR' : 'en-US';
-    
-    notes.push({
-        id: Date.now(),
+
+    const newRef = database.ref('notes/').push();
+    newRef.set({
+        id: newRef.key,
         content: input.value,
-        created: new Date().toLocaleString(dateOptions)
+        created: new Date().toLocaleString(currentLang === 'fr' ? 'fr-FR' : 'en-US')
     });
-    
-    localStorage.setItem('local_notes', JSON.stringify(notes));
     input.value = '';
-    loadNotes();
 }
 
 function loadNotes(filter = "") {
-    const notes = JSON.parse(localStorage.getItem('local_notes') || '[]');
-    const container = document.getElementById('notesContainer');
-    
-    container.innerHTML = notes
-        .filter(n => n.content.toLowerCase().includes(filter.toLowerCase()))
-        .slice().reverse().map(note => `
-            <div class="card mb-4 shadow-sm note-card">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="note-text w-100" contenteditable="true" onblur="updateNote(${note.id}, this.innerText)">${note.content}</div>
-                        <button class="btn btn-link text-danger p-0 ms-2" onclick="deleteNote(${note.id})">&times;</button>
-                    </div>
-                    <div class="mt-3 pt-2 border-top text-muted small">
-                        📅 ${translations[currentLang].createdOn} ${note.created}
+    database.ref('notes/').on('value', (snap) => {
+        const data = snap.val();
+        const notes = data ? Object.values(data) : [];
+        const container = document.getElementById('notesContainer');
+        
+        container.innerHTML = notes
+            .filter(n => n.content.toLowerCase().includes(filter.toLowerCase()))
+            .slice().reverse().map(note => `
+                <div class="card mb-4 shadow-sm note-card">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="note-text w-100" contenteditable="true" onblur="updateCloud('${note.id}', this.innerText)">${note.content}</div>
+                            <button class="btn btn-link text-danger p-0 ms-2" onclick="deleteCloud('${note.id}')">&times;</button>
+                        </div>
+                        <div class="mt-3 pt-2 border-top text-muted small">📅 ${translations[currentLang].createdOn} ${note.created}</div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `).join('');
+    });
 }
 
 function filterNotes() { loadNotes(document.getElementById('searchInput').value); }
-
-function updateNote(id, txt) {
-    let notes = JSON.parse(localStorage.getItem('local_notes') || '[]');
-    const idx = notes.findIndex(n => n.id === id);
-    if (idx !== -1 && txt.trim() !== "") {
-        notes[idx].content = txt;
-        localStorage.setItem('local_notes', JSON.stringify(notes));
-    }
-}
-
-function deleteNote(id) {
-    if (confirm(translations[currentLang].confirmDelete)) {
-        let notes = JSON.parse(localStorage.getItem('local_notes') || '[]');
-        notes = notes.filter(n => n.id !== id);
-        localStorage.setItem('local_notes', JSON.stringify(notes));
-        loadNotes(document.getElementById('searchInput').value);
-    }
-}
+function updateCloud(id, txt) { if(txt.trim()) database.ref('notes/'+id).update({content: txt}); }
+function deleteCloud(id) { if(confirm(translations[currentLang].confirmDelete)) database.ref('notes/'+id).remove(); }
 
 function exportToCSV() {
-    const notes = JSON.parse(localStorage.getItem('local_notes') || '[]');
-    if (notes.length === 0) return;
-    let csv = "Content;Date\n" + notes.map(n => `"${n.content.replace(/"/g, '""')}";${n.created}`).join("\n");
-    const link = document.createElement("a");
-    link.href = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(csv);
-    link.download = "my_notes.csv";
-    link.click();
+    database.ref('notes/').once('value', (snap) => {
+        const notes = Object.values(snap.val() || {});
+        let csv = "Content;Date\n" + notes.map(n => `"${n.content.replace(/"/g, '""')}";${n.created}`).join("\n");
+        const link = document.createElement("a");
+        link.href = "data:text/csv;charset=utf-8,\uFEFF" + encodeURIComponent(csv);
+        link.download = "notes_cloud.csv";
+        link.click();
+    });
 }
 
 window.onload = updateUI;
